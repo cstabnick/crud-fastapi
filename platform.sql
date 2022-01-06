@@ -136,13 +136,14 @@ $$
 ;
 
 
+
+
 create unique index ixu_users_email on users(email);
 
-select update_session(3);
-select update_session(5);
-
-select update_session(3);
 
 select * from sessions s order by expires_at desc;
 
-select * from users u
+select * from users u	
+
+
+
