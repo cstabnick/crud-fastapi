@@ -95,9 +95,14 @@ class ITUtil:
         start = class_name.rindex(".") + 1
         end = class_name.index("Model")
         pg_table = class_name[start:end].lower()
+        
+        fields = model.__class__.__fields__
+        [fields.pop(i) for i in model.fields_not_returned()]
+
+        select_fields = ", ".join([i for i in fields])
 
         sql += f"""
-            select * 
+            select {select_fields}
             from {pg_table}
             """
             
@@ -119,7 +124,7 @@ class ITUtil:
         
         # remove any nondesireables
         nr = model.fields_not_returned()
-        [[r.pop(i) for i in nr] for r in res]
+        [[r.pop(i, None) for i in nr] for r in res]
 
         if return_one:
             return res[0]
@@ -164,7 +169,7 @@ class ITUtil:
             res = ITUtil.pg_insert_return(sql, model.__dict__)
 
             # remove any nondesireables
-            [res.pop(i) for i in model.fields_not_returned()]
+            [res.pop(i, None) for i in model.fields_not_returned()]
 
             return res
         except psycopg2.errors.UniqueViolation:

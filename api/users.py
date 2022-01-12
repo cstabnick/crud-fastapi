@@ -75,7 +75,7 @@ class ITUsersAPI:
         return ITUtil.get_by_model(ITUsersAPI.UsersModel(), limit, skip)
 
     @staticmethod
-    @router.get("/users/{user_id}")
+    @router.get("/users/{user_id}", response_model=UsersModel)
     def read_user(user_id: int):
         return ITUtil.get_by_model(ITUsersAPI.UsersModel(), 1, 0, True, {"user_id": user_id})
         
