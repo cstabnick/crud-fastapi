@@ -1,5 +1,7 @@
 import psycopg2
+from pydantic.main import BaseModel
 import config
+from fastapi import HTTPException
 
 class ITUtil:
     @staticmethod
@@ -83,3 +85,80 @@ class ITUtil:
         conn.commit()
         
         return record
+
+    @staticmethod
+    def get_by_model(model: BaseModel, limit: int, skip: int, return_one: bool = False, query_args: dict = None):
+        sql = ""
+
+        class_name = str(model.__class__)
+
+        start = class_name.rindex(".") + 1
+        end = class_name.index("Model")
+        pg_table = class_name[start:end].lower()
+
+        sql += f"""
+            select * 
+            from {pg_table}
+            """
+            
+        if query_args:
+            sql += " where "
+            sql += " and ".join([f"{qa} = %({qa})s" for qa in query_args.keys()])
+        
+        sql += f"""
+            limit {limit} offset {skip}
+            """
+
+        res = ITUtil.pg_select_set(sql, query_args)
+
+        # remove any nondesireables
+        [[r.pop(i) for i in model.fields_not_returned()] for r in res]
+        if return_one:
+            return res[0]
+        else: 
+            return res
+
+    @staticmethod
+    def create_by_model(model: BaseModel):
+        sql = ""
+
+        class_name = str(model.__class__)
+
+        start = class_name.rindex(".") + 1
+        end = class_name.index("Model")
+        pg_table = class_name[start:end].lower()
+        fields = [i for i in model.__class__.__fields__]
+        table_id = pg_table[0:-1] + "_id"
+        fields.remove(table_id)
+        fields.remove("created_at")
+        fields.remove("updated_at")
+
+        field_names = ', '.join(fields)
+        field_values = ', '.join(["null" if model.__dict__[i] is None else "%(" + str(i) + ")s" for i in fields])
+
+        sql += f"""
+            insert into 
+            {pg_table} (
+                {table_id}, {field_names}
+                , created_at
+                , updated_at
+                , is_deleted
+                )
+            select 
+                new_id('{pg_table}'), {field_values}
+                , now()
+                , now()
+                , false
+            returning *
+            """
+
+        try: 
+            res = ITUtil.pg_insert_return(sql, model.__dict__)
+
+            # remove any nondesireables
+            [res.pop(i) for i in model.fields_not_returned()]
+
+            return res
+        except psycopg2.errors.UniqueViolation:
+            raise HTTPException(status_code=409, detail=f"This {pg_table[0:-1]} already exists")
+        
