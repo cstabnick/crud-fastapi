@@ -15,7 +15,7 @@ class ITUtil:
         fetchone = cur.fetchone()
         
         record = {}
-        if fetchone != None:
+        if fetchone is not None:
             for i in range(len(cur.description)):
                 col_name = cur.description[i].name
                 value = fetchone[i]
@@ -105,14 +105,22 @@ class ITUtil:
             sql += " where "
             sql += " and ".join([f"{qa} = %({qa})s" for qa in query_args.keys()])
         
-        sql += f"""
-            limit {limit} offset {skip}
-            """
+        if return_one:
+            sql += " limit 1 " 
+        else:
+            sql += f"""
+                limit {limit} offset {skip}
+                """
 
         res = ITUtil.pg_select_set(sql, query_args)
 
+        if return_one: 
+            res = [res[0]]
+        
         # remove any nondesireables
-        [[r.pop(i) for i in model.fields_not_returned()] for r in res]
+        nr = model.fields_not_returned()
+        [[r.pop(i) for i in nr] for r in res]
+
         if return_one:
             return res[0]
         else: 
