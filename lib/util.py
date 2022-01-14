@@ -1,5 +1,6 @@
 import psycopg2
 from pydantic.main import BaseModel
+from typing import List
 import config
 from fastapi import HTTPException
 
@@ -87,7 +88,14 @@ class ITUtil:
         return record
 
     @staticmethod
-    def get_by_model(model: BaseModel, limit: int, skip: int, return_one: bool = False, query_args: dict = None, include_deleted: bool = False):
+    def get_by_model(
+        model: BaseModel, 
+        limit: int, 
+        skip: int, 
+        return_one: bool = False, 
+        query_args: dict = None, 
+        include_deleted: bool = False
+    ) -> List[dict]:
         sql = ""
         if limit > 100:
             limit = 100
@@ -97,12 +105,13 @@ class ITUtil:
         start = class_name.rindex(".") + 1
         end = class_name.index("Model")
         pg_table = class_name[start:end].lower()
-        
-        fields = model.__class__.__fields__.copy()
-        [fields.pop(i, None) for i in model.fields_not_returned()]
-        [fields.pop(i, None) for i in model.fields_not_in_db()]
 
-        select_fields = ", ".join([i for i in fields])
+        fields_to_ignore = model.fields_not_returned() + model.fields_not_in_db()
+
+        fields = list(model.__class__.__fields__)
+        fields = list(filter(lambda i: i not in fields_to_ignore, fields))
+
+        select_fields = ", ".join(fields)
 
         sql += f"""
             select {select_fields}
@@ -133,10 +142,7 @@ class ITUtil:
         nr = model.fields_not_returned()
         [[r.pop(i, None) for i in nr] for r in res]
 
-        if return_one:
-            return res[0]
-        else: 
-            return res
+        return res
 
     @staticmethod
     def create_by_model(model: BaseModel, after_insert_sql: list = []):

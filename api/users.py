@@ -53,7 +53,7 @@ class ITUsersAPI:
             raise HTTPException(status_code=401, detail="Bad!")
 
         if bcrypt.checkpw(user.password.encode(), hashed):
-            user = ITUtil.get_by_model(ITUsersAPI.UsersModel(), 1, 0, True, {"user_id": qry["user_id"]})
+            user = ITUtil.get_by_model(ITUsersAPI.UsersModel(), 1, 0, True, {"user_id": qry["user_id"]})[0]
             user['current_session_id'] = ITUsers.update_session(user['user_id'])['session_id']
             return user
         else:
