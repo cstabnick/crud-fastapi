@@ -17,14 +17,12 @@ create unique index ixu_users_email on users(email);
 
 with t as (	 
 	select (random() * 1000000)::int user_id, (random() * 100)::text email, (random() * 100)::text username, 'random() * 100)'::bytea apassword, now() created_at , now() updated_at , (random() > 0.5)::bool is_deleted 
-	returning *
 )
 --insert into users(user_id, email, username, password, created_at, updated_at, is_deleted)
 select user_id , email, username, apassword, created_at, updated_at, is_deleted
 from generate_series(1, 21234) 
 cross join t;
 
-select * from users
 
 update users 
 set is_deleted = false
