@@ -135,7 +135,7 @@ class ITUtil:
 
         res = ITUtil.pg_select_set(sql, query_args)
 
-        if return_one: 
+        if return_one and len(res) > 0: 
             res = [res[0]]
         
         # remove any nondesireables
@@ -143,6 +143,14 @@ class ITUtil:
         [[r.pop(i, None) for i in nr] for r in res]
 
         return res
+
+    @staticmethod
+    def get_by_model_id(model: BaseModel, id_map: map):
+        records = ITUtil.get_by_model(model, 1, 0, True, id_map)
+        if len(records) > 0:
+            return records[0]
+        else:
+            return {}
 
     @staticmethod
     def create_by_model(model: BaseModel, after_insert_sql: list = []):

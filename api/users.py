@@ -62,6 +62,5 @@ class ITUsersAPI:
     @staticmethod
     @router.get("/users/{user_id}", response_model=ITUsers.UsersModel)
     def read_user(user_id: int):
-        user = ITUtil.get_by_model(ITUsers.UsersModel(), 1, 0, True, {"user_id": user_id})[0]
-        return user
+        return ITUtil.get_by_model_id(ITUsers.UsersModel(), {"user_id": user_id})
         
