@@ -89,6 +89,8 @@ class ITUtil:
     @staticmethod
     def get_by_model(model: BaseModel, limit: int, skip: int, return_one: bool = False, query_args: dict = None, include_deleted: bool = False):
         sql = ""
+        if limit > 100:
+            limit = 100
 
         class_name = str(model.__class__)
 
