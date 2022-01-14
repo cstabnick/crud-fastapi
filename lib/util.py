@@ -87,7 +87,7 @@ class ITUtil:
         return record
 
     @staticmethod
-    def get_by_model(model: BaseModel, limit: int, skip: int, return_one: bool = False, query_args: dict = None):
+    def get_by_model(model: BaseModel, limit: int, skip: int, return_one: bool = False, query_args: dict = None, include_deleted: bool = False):
         sql = ""
 
         class_name = str(model.__class__)
@@ -96,20 +96,25 @@ class ITUtil:
         end = class_name.index("Model")
         pg_table = class_name[start:end].lower()
         
-        fields = model.__class__.__fields__
-        [fields.pop(i) for i in model.fields_not_returned()]
+        fields = model.__class__.__fields__.copy()
+        [fields.pop(i, None) for i in model.fields_not_returned()]
+        [fields.pop(i, None) for i in model.fields_not_in_db()]
 
         select_fields = ", ".join([i for i in fields])
 
         sql += f"""
             select {select_fields}
             from {pg_table}
+            where true 
             """
-            
+
         if query_args:
-            sql += " where "
+            sql += " and "
             sql += " and ".join([f"{qa} = %({qa})s" for qa in query_args.keys()])
-        
+
+        if not include_deleted:
+            sql += " and is_deleted = false "
+
         if return_one:
             sql += " limit 1 " 
         else:
@@ -132,7 +137,7 @@ class ITUtil:
             return res
 
     @staticmethod
-    def create_by_model(model: BaseModel):
+    def create_by_model(model: BaseModel, after_insert_sql: list = []):
         sql = ""
 
         class_name = str(model.__class__)
@@ -140,7 +145,9 @@ class ITUtil:
         start = class_name.rindex(".") + 1
         end = class_name.index("Model")
         pg_table = class_name[start:end].lower()
-        fields = [i for i in model.__class__.__fields__]
+        
+        fields = [i for i in model.__class__.__fields__.copy()]
+        [fields.remove(i) for i in model.fields_not_in_db()]
         table_id = pg_table[0:-1] + "_id"
         fields.remove(table_id)
         fields.remove("created_at")
@@ -162,11 +169,19 @@ class ITUtil:
                 , now()
                 , now()
                 , false
+            """
+
+
+        for i in range(0, len(after_insert_sql)):
+            sql += after_insert_sql[i]
+
+
+        sql += """
             returning *
             """
 
         try: 
-            res = ITUtil.pg_insert_return(sql, model.__dict__)
+            res = ITUtil.pg_insert_return(sql, model.__dict__.copy())
 
             # remove any nondesireables
             [res.pop(i, None) for i in model.fields_not_returned()]
