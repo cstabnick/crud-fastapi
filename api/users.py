@@ -1,16 +1,20 @@
-from fastapi import APIRouter, HTTPException, Request
-from typing import List
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+from typing import ItemsView, List
 import bcrypt
 
-from lib.users import ITUsers
+from models.users import ITUsers
+from lib.error import ITError
 from lib.util import ITUtil
+from lib.api_generic import APIGeneric
 
 router = APIRouter()
+APIGeneric.define_generic_api("users", router, ["delete", "read"])
 
 class ITUsersAPI: 
     @staticmethod
-    @router.post("/users/login")
-    def login_user(user: ITUsers.UsersModel, response_model=ITUsers.UsersModel):
+    @router.post("/users/login", response_model=ITUsers.UsersModel, responses={401: {"model": ITError}})
+    def login_user(user: ITUsers.UsersModel):
         login_sql = """
             select user_id, password 
             from users 
@@ -23,18 +27,18 @@ class ITUsersAPI:
         if qry and len(qry) > 0:
             hashed = bytes(qry["password"])
         else:
-            raise HTTPException(status_code=401, detail="Bad!")
+            return JSONResponse(status_code=401, content=ITError("Bad!"))
 
         if bcrypt.checkpw(user.password.encode(), hashed):
             user = ITUtil.get_by_model(ITUsers.UsersModel(), 1, 0, True, {"user_id": qry["user_id"]})[0]
             user['current_session_id'] = ITUsers.update_session(user['user_id'])['session_id']
             return user
         else:
-            raise HTTPException(status_code=401, detail="Bad!")
+            return JSONResponse(status_code=401, content=ITError("Bad!"))
 
     @staticmethod
-    @router.post("/users/create", response_model=ITUsers.UsersModel)
-    def create_user(user: ITUsers.UsersModel, request: Request):
+    @router.post("/users/create", response_model=ITUsers.UsersModel, status_code=status.HTTP_201_CREATED, responses={409: {"model": ITError}})
+    def create_user(user: ITUsers.UsersModel):
         password = user.password.encode()
 
         salt = bcrypt.gensalt()
@@ -44,23 +48,3 @@ class ITUsersAPI:
         user['current_session_id'] = ITUsers.update_session(user['user_id'])['session_id']
 
         return user
-
-    @staticmethod
-    @router.delete("/users/{user_id}")
-    def delete_user(user_id: int):
-        sql = """
-            update users set is_deleted = true where user_id = %s
-        """
-        return ITUtil.pg_exec_no_return(sql, [user_id])
-
-    @staticmethod
-    @router.get("/users", response_model=List[ITUsers.UsersModel])
-    def read_users(limit: int = 100, skip: int = 0):
-        users = ITUtil.get_by_model(ITUsers.UsersModel(), limit, skip)
-        return users
-
-    @staticmethod
-    @router.get("/users/{user_id}", response_model=ITUsers.UsersModel)
-    def read_user(user_id: int):
-        return ITUtil.get_by_model_id(ITUsers.UsersModel(), {"user_id": user_id})
-        

@@ -22,7 +22,7 @@ class async_iterator_wrapper:
         return value
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
+async def log_request_response(request: Request, call_next):
     response = await call_next(request)
     # Consuming FastAPI response and grabbing body here
     resp_body = [section async for section in response.__dict__['body_iterator']]

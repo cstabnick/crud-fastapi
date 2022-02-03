@@ -121,7 +121,7 @@ class ITUtil:
 
         if query_args:
             sql += " and "
-            sql += " and ".join([f"{qa} = %({qa})s" for qa in query_args.keys()])
+            sql += " and ".join([f"{qa_key} = %({qa_key})s" for qa_key in query_args.keys()])
 
         if not include_deleted:
             sql += " and is_deleted = false "
