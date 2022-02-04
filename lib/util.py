@@ -5,10 +5,29 @@ import config
 from fastapi import HTTPException
 
 class ITUtil:
+    @staticmethod 
+    def clean_print_sql(sql, args):
+        if type(args) == list:
+            for arg in args:
+                sql = sql.replace("%s", arg, 1)
+            print(sql)
+        elif type(args) == dict:
+            for arg in args:
+                if args[arg] is None:
+                    sql = sql.replace(f"%({arg})s", "null", 1)
+                elif type(args[arg]) == bytes:
+                    sql = sql.replace(f"%({arg})s", "'" + args[arg].decode() + "'::bytea", 1)
+                elif type(args[arg]) == str:
+                    sql = sql.replace(f"%({arg})s", "'" + str(args[arg]) + "'", 1)
+                else: 
+                    sql = sql.replace(f"%({arg})s", str(args[arg]), 1)
+            print(sql)
+
+
+
     @staticmethod
-    def pg_select_one(sql, args=None, commit=False):
-        if args is None:
-            args = []
+    def pg_select_one(sql, args=[], commit=False):
+        ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -28,9 +47,8 @@ class ITUtil:
         return record
 
     @staticmethod
-    def pg_select_set(sql, args=None):
-        if args is None:
-            args = []
+    def pg_select_set(sql, args=[]):
+        ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -51,9 +69,8 @@ class ITUtil:
         return records
 
     @staticmethod
-    def pg_exec_no_return(sql, args=None):
-        if args is None:
-            args = []
+    def pg_exec_no_return(sql, args=[]):
+        ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -66,9 +83,8 @@ class ITUtil:
         return True
 
     @staticmethod
-    def pg_insert_return(sql, args=None):
-        if args is None:
-            args = []
+    def pg_insert_return(sql, args=[]):
+        ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -86,6 +102,10 @@ class ITUtil:
         conn.commit()
         
         return record
+
+    @staticmethod 
+    def pg_update_return(sql, args):
+        ITUtil.pg_insert_return(sql, args)
 
     @staticmethod
     def get_by_model(
@@ -113,25 +133,19 @@ class ITUtil:
 
         select_fields = ", ".join(fields)
 
-        sql += f"""
-            select {select_fields}
-            from {pg_table}
-            where true 
-            """
+        sql += f"select {select_fields} \nfrom {pg_table} \nwhere true \n"
 
         if query_args:
-            sql += " and "
-            sql += " and ".join([f"{qa_key} = %({qa_key})s" for qa_key in query_args.keys()])
+            sql += "and "
+            sql += "\nand ".join([f"{qa_key} = %({qa_key})s" for qa_key in query_args.keys()])
 
         if not include_deleted:
-            sql += " and is_deleted = false "
+            sql += "\nand is_deleted = false "
 
         if return_one:
-            sql += " limit 1 " 
+            sql += "\nlimit 1 " 
         else:
-            sql += f"""
-                limit {limit} offset {skip}
-                """
+            sql += f"\nlimit {limit} offset {skip}"
 
         res = ITUtil.pg_select_set(sql, query_args)
 

@@ -21,6 +21,10 @@ class ITUsers:
         @staticmethod        
         def required_on_create_fields():
             return ["username", "password", "email"]
+
+        @staticmethod
+        def not_allowed_update_fields():
+            return ["email"]
         
         @staticmethod
         def fields_not_returned():
