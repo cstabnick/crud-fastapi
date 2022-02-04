@@ -9,7 +9,14 @@ class ITUtil:
     def clean_print_sql(sql, args):
         if type(args) == list:
             for arg in args:
-                sql = sql.replace("%s", arg, 1)
+                if arg is None:
+                    sql = sql.replace(f"%s", "null", 1)
+                elif type(arg) == bytes:
+                    sql = sql.replace(f"%s", "'" + arg.decode() + "'::bytea", 1)
+                elif type(arg) == str:
+                    sql = sql.replace(f"%s", "'" + str(arg) + "'", 1)
+                else: 
+                    sql = sql.replace(f"%s", str(arg), 1)
             print(sql)
         elif type(args) == dict:
             for arg in args:

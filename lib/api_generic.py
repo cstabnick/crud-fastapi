@@ -25,7 +25,7 @@ class APIGeneric:
             python += f"""
    
 @staticmethod
-@router.delete("/{db_table_name}/{{{db_table_id}}}}}")
+@router.delete("/{db_table_name}/{{{db_table_id}}}")
 def delete_{db_table_name_singular}({db_table_id}: int):
     sql = \"\"\"
         update {db_table_name} set is_deleted = true where {db_table_id} = %s
