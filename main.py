@@ -5,21 +5,11 @@ import psycopg2
 import json
 import bcrypt
 
+from lib.util import ITUtil
 from api import users
 
 app = FastAPI()
 
-class async_iterator_wrapper:
-    def __init__(self, obj):
-        self._it = iter(obj)
-    def __aiter__(self):
-        return self
-    async def __anext__(self):
-        try:
-            value = next(self._it)
-        except StopIteration:
-            raise StopAsyncIteration
-        return value
 
 @app.middleware("http")
 async def log_request_response(request: Request, call_next):
@@ -27,7 +17,7 @@ async def log_request_response(request: Request, call_next):
     # Consuming FastAPI response and grabbing body here
     resp_body = [section async for section in response.__dict__['body_iterator']]
     # Repairing FastAPI response
-    response.__setattr__('body_iterator', async_iterator_wrapper(resp_body))
+    response.__setattr__('body_iterator', ITUtil.AsyncIteratorWrapper(resp_body))
 
     # Formatting response body for logging
     try:

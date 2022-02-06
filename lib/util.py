@@ -1,10 +1,23 @@
 import psycopg2
-from pydantic.main import BaseModel
 from typing import List
 import config
 from fastapi import HTTPException
 
+from lib.model import ITModel
+
 class ITUtil:
+    class AsyncIteratorWrapper:
+        def __init__(self, obj):
+            self._it = iter(obj)
+        def __aiter__(self):
+            return self
+        async def __anext__(self):
+            try:
+                value = next(self._it)
+            except StopIteration:
+                raise StopAsyncIteration
+            return value
+
     @staticmethod 
     def clean_print_sql(sql, args):
         if type(args) == list:
@@ -30,11 +43,9 @@ class ITUtil:
                     sql = sql.replace(f"%({arg})s", str(args[arg]), 1)
             print(sql)
 
-
-
     @staticmethod
     def pg_select_one(sql, args=[], commit=False):
-        ITUtil.clean_print_sql(sql, args)
+        # ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -55,7 +66,7 @@ class ITUtil:
 
     @staticmethod
     def pg_select_set(sql, args=[]):
-        ITUtil.clean_print_sql(sql, args)
+        # ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -77,7 +88,7 @@ class ITUtil:
 
     @staticmethod
     def pg_exec_no_return(sql, args=[]):
-        ITUtil.clean_print_sql(sql, args)
+        # ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -91,7 +102,7 @@ class ITUtil:
 
     @staticmethod
     def pg_insert_return(sql, args=[]):
-        ITUtil.clean_print_sql(sql, args)
+        # ITUtil.clean_print_sql(sql, args)
 
         conn = psycopg2.connect(config.db_conn)
         cur = conn.cursor()
@@ -112,11 +123,11 @@ class ITUtil:
 
     @staticmethod 
     def pg_update_return(sql, args):
-        ITUtil.pg_insert_return(sql, args)
+        return ITUtil.pg_insert_return(sql, args)
 
     @staticmethod
     def get_by_model(
-        model: BaseModel, 
+        model: ITModel, 
         limit: int, 
         skip: int, 
         return_one: bool = False, 
@@ -133,7 +144,7 @@ class ITUtil:
         end = class_name.index("Model")
         pg_table = class_name[start:end].lower()
 
-        fields_to_ignore = model.fields_not_returned() + model.fields_not_in_db()
+        fields_to_ignore = model.fields_not_returned() + model.fields_not_in_db() + model.fields_not_in_db_base()
 
         fields = list(model.__class__.__fields__)
         fields = list(filter(lambda i: i not in fields_to_ignore, fields))
@@ -166,7 +177,7 @@ class ITUtil:
         return res
 
     @staticmethod
-    def get_by_model_id(model: BaseModel, id_map: map):
+    def get_by_model_id(model: ITModel, id_map: map):
         records = ITUtil.get_by_model(model, 1, 0, True, id_map)
         if len(records) > 0:
             return records[0]
@@ -174,7 +185,7 @@ class ITUtil:
             return {}
 
     @staticmethod
-    def create_by_model(model: BaseModel, after_insert_sql: list = []):
+    def create_by_model(model: ITModel, after_insert_sql: list = []):
         sql = ""
 
         class_name = str(model.__class__)
@@ -184,7 +195,7 @@ class ITUtil:
         pg_table = class_name[start:end].lower()
         
         fields = [i for i in model.__class__.__fields__.copy()]
-        [fields.remove(i) for i in model.fields_not_in_db()]
+        [fields.remove(i) for i in model.fields_not_in_db() + model.fields_not_in_db_base()]
         table_id = pg_table[0:-1] + "_id"
         fields.remove(table_id)
         fields.remove("created_at")
