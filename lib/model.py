@@ -1,13 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, final
+from typing import Optional, List
 
 class ITModel(BaseModel):
-    
-    @final
-    @staticmethod
-    def fields_not_in_db_base():
-        return []
-
     @staticmethod
     def fields_not_in_db():
         return []

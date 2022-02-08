@@ -144,7 +144,7 @@ class ITUtil:
         end = class_name.index("Model")
         pg_table = class_name[start:end].lower()
 
-        fields_to_ignore = model.fields_not_returned() + model.fields_not_in_db() + model.fields_not_in_db_base()
+        fields_to_ignore = model.fields_not_returned() + model.fields_not_in_db() 
 
         fields = list(model.__class__.__fields__)
         fields = list(filter(lambda i: i not in fields_to_ignore, fields))
@@ -195,7 +195,7 @@ class ITUtil:
         pg_table = class_name[start:end].lower()
         
         fields = [i for i in model.__class__.__fields__.copy()]
-        [fields.remove(i) for i in model.fields_not_in_db() + model.fields_not_in_db_base()]
+        [fields.remove(i) for i in model.fields_not_in_db()]
         table_id = pg_table[0:-1] + "_id"
         fields.remove(table_id)
         fields.remove("created_at")
